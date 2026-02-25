@@ -1,0 +1,55 @@
+name: CI
+
+on:
+ push:
+   branches: [ "main" ]
+ pull_request:
+   branches: [ "main" ]
+
+concurrency:
+ group: ci-${{ github.ref }}
+ cancel-in-progress: true
+
+jobs:
+ build-test:
+   runs-on: ubuntu-latest
+   strategy:
+     fail-fast: false
+     matrix:
+       app: [ backend-api, worker ]
+
+   defaults:
+     run:
+       working-directory: ${{ matrix.app }}
+
+   steps:
+     - name: Checkout
+       uses: actions/checkout@v4
+
+     - name: Set up JDK 21
+       uses: actions/setup-java@v4
+       with:
+         distribution: temurin
+         java-version: "21"
+         cache: gradle
+
+     - name: Verify Docker
+       run: docker version
+
+     # 권한 문제 방지 (리눅스 러너에서 gradlew 실행권한)
+     - name: Make gradlew executable
+       run: chmod +x ./gradlew
+
+     # 빌드 + 테스트
+     - name: Build & Test
+       run: ./gradlew clean test build --no-daemon
+
+     # 테스트 리포트 업로드(실패했을 때 확인용)
+     - name: Upload test reports
+       if: failure()
+       uses: actions/upload-artifact@v4
+       with:
+         name: test-reports-${{ matrix.app }}
+         path: |
+           ${{ matrix.app }}/build/reports/tests
+           ${{ matrix.app }}/build/test-results
