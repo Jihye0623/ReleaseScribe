@@ -22,3 +22,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
+app:
+  crypto:
+    key: ${APP_CRYPTO_KEY}
